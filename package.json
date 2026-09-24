@@ -1,0 +1,26 @@
+{
+  "name": "timetimr",
+  "private": true,
+  "version": "0.1.0",
+  "description": "A customizable, Time Timer-inspired countdown timer. Runs as a website or a Windows/Mac/Linux desktop app.",
+  "workspaces": [
+    "web",
+    "electron"
+  ],
+  "scripts": {
+    "dev:web": "npm run dev -w web",
+    "dev:electron": "npm run dev -w electron",
+    "dev": "concurrently -k -n WEB,ELECTRON -c blue,magenta \"npm:dev:web\" \"wait-on tcp:5173 && npm:dev:electron\"",
+    "build:web": "npm run build -w web",
+    "build:electron": "npm run build -w electron",
+    "build": "npm run build:web && npm run build:electron",
+    "dist:win": "npm run build:web && npm run dist:win -w electron",
+    "dist:mac": "npm run build:web && npm run dist:mac -w electron",
+    "dist:linux": "npm run build:web && npm run dist:linux -w electron",
+    "dist:all": "npm run build:web && npm run dist:all -w electron"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "wait-on": "^8.0.1"
+  }
+}

@@ -1,0 +1,383 @@
+:root {
+  color-scheme: light dark;
+  --bg: #f4f2ee;
+  --surface: #ffffff;
+  --border: #e2ddd4;
+  --text: #26241f;
+  --text-muted: #7a7469;
+  --accent: #e6432b;
+  font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1b1a17;
+    --surface: #262420;
+    --border: #3a372f;
+    --text: #f2efe9;
+    --text-muted: #a39c8c;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+}
+
+#app {
+  min-height: 100%;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  color: inherit;
+}
+
+/* ---------- main layout ---------- */
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(340px, 1fr) 360px;
+  align-items: start;
+  gap: 24px;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 20px 60px;
+}
+
+.layout.is-electron {
+  padding-top: 44px; /* leave room for native title bar area */
+}
+
+.widgets {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 32px;
+}
+
+.widgets[data-clock-position="left"] {
+  flex-direction: row-reverse;
+  justify-content: center;
+}
+.widgets[data-clock-position="right"] {
+  flex-direction: row;
+  justify-content: center;
+}
+.widgets[data-clock-position="above"] {
+  flex-direction: column-reverse;
+}
+.widgets[data-clock-position="below"] {
+  flex-direction: column;
+}
+
+.disk-slot,
+.clock-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 860px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+  .widgets[data-clock-position="left"],
+  .widgets[data-clock-position="right"] {
+    flex-direction: column;
+  }
+}
+
+/* ---------- timer disk ---------- */
+
+.timer-disk {
+  width: min(70vw, 320px);
+  height: min(70vw, 320px);
+  touch-action: none;
+  user-select: none;
+}
+
+.disk-face {
+  fill: var(--disk-face, #fff);
+  stroke: var(--disk-color, #e6432b);
+  stroke-width: 2;
+}
+
+.disk-wedge {
+  fill: var(--disk-color, #e6432b);
+  opacity: 0.92;
+  transition: opacity 0.15s ease;
+}
+
+.disk-rim {
+  stroke: var(--disk-color, #e6432b);
+  stroke-width: 3;
+}
+
+.tick {
+  stroke: var(--disk-text, #2b2b2b);
+  opacity: 0.35;
+  stroke-width: 1.5;
+}
+.tick-major {
+  opacity: 0.6;
+  stroke-width: 2;
+}
+
+.disk-digital {
+  fill: var(--disk-text, #2b2b2b);
+  font-size: 34px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+.timer-disk.is-finished .disk-face {
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.12);
+  }
+}
+
+/* ---------- clock ---------- */
+
+.timer-clock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.clock-face {
+  width: min(48vw, 220px);
+  height: min(48vw, 220px);
+}
+
+.clock-circle {
+  fill: var(--disk-face, #fff);
+  stroke: var(--disk-color, #e6432b);
+  stroke-width: 2;
+}
+
+.clock-tick {
+  stroke: var(--disk-text, #2b2b2b);
+  opacity: 0.45;
+  stroke-width: 2;
+}
+
+.clock-hand-hour,
+.clock-hand-minute {
+  stroke: var(--disk-text, #2b2b2b);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+.clock-hand-second {
+  stroke: var(--disk-color, #e6432b);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.clock-hub {
+  fill: var(--disk-color, #e6432b);
+}
+
+.clock-digital {
+  font-variant-numeric: tabular-nums;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* ---------- panel ---------- */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.panel-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 18px 20px;
+}
+
+.panel-section h2 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.duration-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.duration-row label {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  color: var(--text-muted);
+  gap: 4px;
+}
+
+.duration-row input[type="number"] {
+  width: 60px;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+}
+
+.preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.preset {
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.transport-row {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+button.btn-primary,
+.duration-row button,
+.transport-row button,
+.popout-controls button {
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  font-weight: 600;
+}
+
+button.btn-primary,
+.transport-row [data-a="start-pause"],
+.popout-controls [data-a="start-pause"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.transport-row [data-a="start-pause"].is-running {
+  background: #444;
+  border-color: #444;
+}
+
+.btn-subtle {
+  background: transparent;
+  border: 1px dashed var(--border);
+  color: var(--text-muted);
+  border-radius: 10px;
+  padding: 8px 14px;
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 10px 0 0;
+  line-height: 1.4;
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 16px;
+  margin-bottom: 10px;
+}
+
+.field-grid label,
+.panel label:not(.checkbox) {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  color: var(--text-muted);
+  gap: 4px;
+}
+
+.panel select,
+.panel input[type="color"],
+.panel input[type="range"] {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  padding: 6px;
+}
+
+.panel input[type="color"] {
+  height: 34px;
+  padding: 2px;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  margin: 8px 0;
+}
+
+/* ---------- popout page ---------- */
+
+body.is-popout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.popout-layout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 24px;
+}
+
+.popout-widget .timer-disk {
+  width: min(80vw, 420px);
+  height: min(80vw, 420px);
+}
+
+.popout-widget .clock-face {
+  width: min(80vw, 320px);
+  height: min(80vw, 320px);
+}
+
+.popout-controls {
+  display: flex;
+  gap: 10px;
+}

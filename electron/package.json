@@ -1,0 +1,49 @@
+{
+  "name": "timetimr-electron",
+  "private": true,
+  "version": "0.1.0",
+  "description": "TimeTimr desktop app (Windows/Mac/Linux) — Electron shell around the TimeTimr web app.",
+  "main": "main.cjs",
+  "scripts": {
+    "dev": "electron .",
+    "prebuild:copy": "node scripts/copy-web-dist.mjs",
+    "build": "npm run prebuild:copy",
+    "dist:win": "npm run prebuild:copy && electron-builder --win",
+    "dist:mac": "npm run prebuild:copy && electron-builder --mac",
+    "dist:linux": "npm run prebuild:copy && electron-builder --linux",
+    "dist:all": "npm run prebuild:copy && electron-builder -mwl"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.timetimr.app",
+    "productName": "TimeTimr",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "web-dist/**/*"
+    ],
+    "win": {
+      "target": ["nsis"]
+    },
+    "mac": {
+      "target": ["dmg", "zip"],
+      "category": "public.app-category.productivity"
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "category": "Utility"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}
