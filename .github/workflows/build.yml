@@ -77,7 +77,7 @@ jobs:
       - name: Extract changelog section for this tag
         run: |
           awk -v ver="## ${GITHUB_REF_NAME}" '
-            $0 == ver { flag=1; next }
+            index($0, ver) == 1 { flag=1; next }
             /^## / && flag { exit }
             flag { print }
           ' CHANGELOG.md > release-notes.md
