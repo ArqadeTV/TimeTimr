@@ -13,7 +13,11 @@
     "dist:linux": "npm run prebuild:copy && electron-builder --linux",
     "dist:all": "npm run prebuild:copy && electron-builder -mwl"
   },
-  "author": "TimeTimr contributors",
+  "homepage": "https://github.com/ArqadeTV/TimeTimr",
+  "author": {
+    "name": "TimeTimr contributors",
+    "email": "realarqade@gmail.com"
+  },
   "devDependencies": {
     "electron": "^33.2.0",
     "electron-builder": "^25.1.8"
