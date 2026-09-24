@@ -1,4 +1,4 @@
-import { ClockPosition, ClockStyle, TimerSettings } from "../core/types";
+import { ClockPosition, ClockStyle, PopoutStatus, TimerSettings, WidgetKind } from "../core/types";
 import { msToParts } from "../core/timer";
 
 export interface PanelCallbacks {
@@ -7,7 +7,8 @@ export interface PanelCallbacks {
   onStartPause(): void;
   onReset(): void;
   onSettingsChange(partial: Partial<TimerSettings>): void;
-  onPopout(kind: "timer" | "clock"): void;
+  onPopout(kind: WidgetKind): void;
+  onJoinPopouts(): void;
   onResetSettings(): void;
 }
 
@@ -20,9 +21,11 @@ export class ControlPanel {
   private mInput!: HTMLInputElement;
   private sInput!: HTMLInputElement;
   private startPauseBtn!: HTMLButtonElement;
-  private poppedOut: { timer: boolean; clock: boolean } = { timer: false, clock: false };
+  private poppedOut: PopoutStatus = { timer: false, clock: false, combined: false };
   private popTimerBtn!: HTMLButtonElement;
   private popClockBtn!: HTMLButtonElement;
+  private popCombinedBtn!: HTMLButtonElement;
+  private joinBtn!: HTMLButtonElement;
 
   constructor(cb: PanelCallbacks) {
     this.cb = cb;
@@ -36,12 +39,20 @@ export class ControlPanel {
     container.appendChild(this.el);
   }
 
-  setPoppedOut(status: { timer: boolean; clock: boolean }): void {
+  setPoppedOut(status: PopoutStatus): void {
     this.poppedOut = status;
-    this.popTimerBtn.textContent = status.timer ? "Timer popped out" : "Pop out timer";
-    this.popTimerBtn.disabled = status.timer;
-    this.popClockBtn.textContent = status.clock ? "Clock popped out" : "Pop out clock";
-    this.popClockBtn.disabled = status.clock;
+    const anyPopped = status.timer || status.clock || status.combined;
+
+    this.popTimerBtn.textContent = status.timer && !status.combined ? "Timer popped out" : "Pop out timer";
+    this.popTimerBtn.disabled = status.timer || status.combined;
+    this.popClockBtn.textContent = status.clock && !status.combined ? "Clock popped out" : "Pop out clock";
+    this.popClockBtn.disabled = status.clock || status.combined;
+    this.popCombinedBtn.textContent = status.combined ? "Both popped out together" : "Pop out both together";
+    this.popCombinedBtn.disabled = anyPopped;
+
+    // Offer to join only once timer and clock are each out in their own separate window.
+    const canJoin = status.timer && status.clock && !status.combined;
+    this.joinBtn.hidden = !canJoin;
   }
 
   syncDurationInputs(ms: number): void {
@@ -112,7 +123,11 @@ export class ControlPanel {
           <button data-a="popout-timer" type="button">Pop out timer</button>
           <button data-a="popout-clock" type="button">Pop out clock</button>
         </div>
-        <p class="hint">Pops the widget into its own window you can drag to another screen. The main window keeps working as a single page either way.</p>
+        <div class="transport-row">
+          <button data-a="popout-combined" type="button">Pop out both together</button>
+          <button data-a="join-popouts" type="button" class="btn-subtle" hidden>Join into one window</button>
+        </div>
+        <p class="hint">Pops the widget into its own window you can drag to another screen. The main window keeps working as a single page either way. Already popped both out separately? Join them into a single window instead.</p>
       </section>
 
       <section class="panel-section">
@@ -176,6 +191,8 @@ export class ControlPanel {
     this.startPauseBtn = this.q("[data-a=start-pause]");
     this.popTimerBtn = this.q("[data-a=popout-timer]");
     this.popClockBtn = this.q("[data-a=popout-clock]");
+    this.popCombinedBtn = this.q("[data-a=popout-combined]");
+    this.joinBtn = this.q("[data-a=join-popouts]");
 
     this.q<HTMLButtonElement>("[data-a=apply-duration]").addEventListener("click", () => {
       this.cb.onSetDuration(this.numOf(this.hInput), this.numOf(this.mInput), this.numOf(this.sInput));
@@ -189,6 +206,8 @@ export class ControlPanel {
     this.q<HTMLButtonElement>("[data-a=reset]").addEventListener("click", () => this.cb.onReset());
     this.popTimerBtn.addEventListener("click", () => this.cb.onPopout("timer"));
     this.popClockBtn.addEventListener("click", () => this.cb.onPopout("clock"));
+    this.popCombinedBtn.addEventListener("click", () => this.cb.onPopout("combined"));
+    this.joinBtn.addEventListener("click", () => this.cb.onJoinPopouts());
     this.q<HTMLButtonElement>("[data-a=reset-settings]").addEventListener("click", () => this.cb.onResetSettings());
 
     const bindField = <K extends keyof TimerSettings>(name: K, transform: (v: string) => TimerSettings[K]) => {

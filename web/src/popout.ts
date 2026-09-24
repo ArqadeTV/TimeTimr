@@ -7,6 +7,7 @@ const root = document.getElementById("app");
 if (!root) throw new Error("missing #app root element");
 
 const params = new URLSearchParams(window.location.search);
-const kind = (params.get("widget") === "clock" ? "clock" : "timer") as WidgetKind;
+const requested = params.get("widget");
+const kind = (requested === "clock" || requested === "combined" ? requested : "timer") as WidgetKind;
 
 new PopoutApp(root, createBridge(), kind);

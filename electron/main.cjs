@@ -6,9 +6,20 @@ const isDev = !app.isPackaged;
 
 /** @type {BrowserWindow | null} */
 let mainWindow = null;
-/** @type {Map<'timer'|'clock', BrowserWindow>} */
+/** @type {Map<'timer'|'clock'|'combined', BrowserWindow>} */
 const popouts = new Map();
 let alwaysOnTopForPopouts = false;
+
+const POPOUT_TITLES = {
+  timer: "TimeTimr — Timer",
+  clock: "TimeTimr — Clock",
+  combined: "TimeTimr — Timer & Clock",
+};
+const POPOUT_SIZES = {
+  timer: { width: 460, height: 560 },
+  clock: { width: 380, height: 440 },
+  combined: { width: 780, height: 500 },
+};
 
 function indexUrl() {
   if (isDev) return `${DEV_SERVER_URL}/index.html`;
@@ -47,20 +58,24 @@ function createPopoutWindow(kind) {
     existing.focus();
     return;
   }
+  const { width, height } = POPOUT_SIZES[kind];
   const win = new BrowserWindow({
-    width: kind === "timer" ? 460 : 380,
-    height: kind === "timer" ? 560 : 440,
+    width,
+    height,
     minWidth: 260,
     minHeight: 260,
-    title: kind === "timer" ? "TimeTimr — Timer" : "TimeTimr — Clock",
+    title: POPOUT_TITLES[kind],
     backgroundColor: "#f4f2ee",
     alwaysOnTop: alwaysOnTopForPopouts,
+    // Popout widgets shouldn't look like a normal app window — no menu bar chrome.
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
     },
   });
+  win.setMenuBarVisibility(false);
   win.loadURL(popoutUrl(kind));
   win.on("closed", () => {
     popouts.delete(kind);
@@ -81,7 +96,7 @@ ipcMain.on("ttr:broadcast", (event, message) => {
 });
 
 ipcMain.on("ttr:open-popout", (_event, kind) => {
-  if (kind === "timer" || kind === "clock") createPopoutWindow(kind);
+  if (kind === "timer" || kind === "clock" || kind === "combined") createPopoutWindow(kind);
 });
 
 ipcMain.on("ttr:close-self", (event) => {

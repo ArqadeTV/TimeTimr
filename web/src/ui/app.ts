@@ -23,7 +23,7 @@ export class App {
   private panel: ControlPanel;
   private clockSlot: HTMLDivElement;
   private diskSlot: HTMLDivElement;
-  private poppedOut: PopoutStatus = { timer: false, clock: false };
+  private poppedOut: PopoutStatus = { timer: false, clock: false, combined: false };
   private lastAlarmSeqHandled = 0;
   private lastTickSecond = -1;
   private rafId = 0;
@@ -64,6 +64,7 @@ export class App {
       onReset: () => this.setState(resetTimer(this.state)),
       onSettingsChange: (partial) => this.setState(updateSettings(this.state, partial)),
       onPopout: (kind) => this.openPopout(kind),
+      onJoinPopouts: () => this.joinPopouts(),
       onResetSettings: () => this.setState(updateSettings(this.state, DEFAULT_SETTINGS)),
     });
     this.panel.mount(panelSlot);
@@ -120,19 +121,30 @@ export class App {
   }
 
   private applyPoppedOutVisibility(): void {
-    this.diskSlot.style.display = this.poppedOut.timer ? "none" : "";
-    if (!this.poppedOut.clock) {
-      this.clockSlot.style.display = this.state.settings.showClock ? "" : "none";
-    } else {
-      this.clockSlot.style.display = "none";
-    }
+    const timerHidden = this.poppedOut.timer || this.poppedOut.combined;
+    const clockHidden = this.poppedOut.clock || this.poppedOut.combined;
+    this.diskSlot.style.display = timerHidden ? "none" : "";
+    this.clockSlot.style.display = !clockHidden && this.state.settings.showClock ? "" : "none";
     this.panel.setPoppedOut(this.poppedOut);
   }
 
   private openPopout(kind: WidgetKind): void {
-    this.poppedOut = { ...this.poppedOut, [kind]: true };
+    if (kind === "combined") {
+      this.poppedOut = { timer: true, clock: true, combined: true };
+    } else {
+      this.poppedOut = { ...this.poppedOut, [kind]: true };
+    }
     this.applyPoppedOutVisibility();
     this.bridge.openPopout(kind);
+  }
+
+  /** Closes the separate timer + clock pop-outs and reopens them together in one window. */
+  private joinPopouts(): void {
+    this.bridge.send({ type: "close-popout", kind: "timer" });
+    this.bridge.send({ type: "close-popout", kind: "clock" });
+    this.poppedOut = { timer: true, clock: true, combined: true };
+    this.applyPoppedOutVisibility();
+    this.bridge.openPopout("combined");
   }
 
   private render(now: number = Date.now()): void {

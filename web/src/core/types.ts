@@ -1,6 +1,7 @@
 export type ClockStyle = "analog" | "digital" | "both";
 export type ClockPosition = "left" | "right" | "above" | "below";
-export type WidgetKind = "timer" | "clock";
+/** "combined" is a single pop-out window holding both the timer and the clock. */
+export type WidgetKind = "timer" | "clock" | "combined";
 
 export interface TimerSettings {
   diskColor: string;
@@ -38,12 +39,16 @@ export interface TimerState {
 export interface PopoutStatus {
   timer: boolean;
   clock: boolean;
+  /** True while both widgets live together in one combined pop-out window. */
+  combined: boolean;
 }
 
 export type BridgeMessage =
   | { type: "state"; state: TimerState }
   | { type: "request-state" }
-  | { type: "popout-status"; status: Partial<PopoutStatus> };
+  | { type: "popout-status"; status: Partial<PopoutStatus> }
+  /** Asks the pop-out window of this kind to close itself (used when joining separate pop-outs into one). */
+  | { type: "close-popout"; kind: WidgetKind };
 
 export const DEFAULT_SETTINGS: TimerSettings = {
   diskColor: "#e6432b",

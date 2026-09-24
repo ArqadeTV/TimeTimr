@@ -381,3 +381,29 @@ body.is-popout {
   display: flex;
   gap: 10px;
 }
+
+/* A combined pop-out shows the timer and clock side by side, each a bit smaller
+   so both fit comfortably in one window. */
+.popout-layout[data-kind="combined"] .popout-widget {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 36px;
+}
+
+.popout-layout[data-kind="combined"] .popout-widget .timer-disk {
+  width: min(38vw, 320px);
+  height: min(38vw, 320px);
+}
+
+.popout-layout[data-kind="combined"] .popout-widget .clock-face {
+  width: min(28vw, 220px);
+  height: min(28vw, 220px);
+}
+
+@media (max-width: 640px) {
+  .popout-layout[data-kind="combined"] .popout-widget {
+    flex-direction: column;
+  }
+}

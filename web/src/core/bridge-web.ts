@@ -28,7 +28,21 @@ export class WebBridge implements Bridge {
 
   openPopout(kind: WidgetKind): void {
     const url = `${popoutBaseUrl()}?widget=${kind}`;
-    const features = "popup=yes,width=480,height=480,noopener";
+    const size = kind === "combined" ? "width=760,height=480" : "width=420,height=480";
+    // A minimal feature set (no toolbar/location/menubar/status) is what gets browsers
+    // to drop the address bar, bookmarks bar, and extensions row from the popup chrome.
+    const features = [
+      "popup=yes",
+      size,
+      "noopener",
+      "noreferrer",
+      "toolbar=no",
+      "location=no",
+      "menubar=no",
+      "status=no",
+      "scrollbars=no",
+      "resizable=yes",
+    ].join(",");
     window.open(url, `timetimr-${kind}`, features);
   }
 

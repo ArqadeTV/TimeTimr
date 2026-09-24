@@ -30,14 +30,24 @@ export class PopoutApp {
     const widgetSlot = root.querySelector<HTMLDivElement>("[data-widget-slot]")!;
     const controls = root.querySelector<HTMLDivElement>("[data-controls]")!;
 
-    if (kind === "timer") {
+    const showsTimer = kind === "timer" || kind === "combined";
+    const showsClock = kind === "clock" || kind === "combined";
+
+    if (showsTimer) {
       this.disk = new TimerDisk();
       this.disk.mount(widgetSlot);
-      controls.innerHTML = `
-        <button data-a="start-pause" type="button" class="btn-primary">Start</button>
-        <button data-a="reset" type="button">Reset</button>
-        <button data-a="pop-in" type="button" class="btn-subtle">Pop back in</button>
-      `;
+    }
+    if (showsClock) {
+      this.clock = new TimerClock();
+      this.clock.mount(widgetSlot);
+    }
+
+    controls.innerHTML = `
+      ${showsTimer ? '<button data-a="start-pause" type="button" class="btn-primary">Start</button>' : ""}
+      ${showsTimer ? '<button data-a="reset" type="button">Reset</button>' : ""}
+      <button data-a="pop-in" type="button" class="btn-subtle">Pop back in</button>
+    `;
+    if (showsTimer) {
       this.startPauseBtn = controls.querySelector("[data-a=start-pause]")!;
       this.startPauseBtn.addEventListener("click", () => {
         if (!this.state) return;
@@ -47,21 +57,24 @@ export class PopoutApp {
         if (!this.state) return;
         this.broadcast(resetTimer(this.state));
       });
-    } else {
-      this.clock = new TimerClock();
-      this.clock.mount(widgetSlot);
-      controls.innerHTML = `<button data-a="pop-in" type="button" class="btn-subtle">Pop back in</button>`;
     }
 
     controls.querySelector("[data-a=pop-in]")!.addEventListener("click", () => this.popBackIn());
     window.addEventListener("beforeunload", () => this.notifyClosed());
 
     this.bridge.onMessage((msg) => {
-      if (msg.type === "state") this.applyState(msg.state);
+      if (msg.type === "state") {
+        this.applyState(msg.state);
+      } else if (msg.type === "close-popout" && msg.kind === this.kind) {
+        // The main window asked this specific pop-out to close (e.g. while joining
+        // separate pop-outs into one combined window).
+        this.popBackIn();
+      }
     });
     this.bridge.send({ type: "request-state" });
 
-    document.title = kind === "timer" ? "TimeTimr — Timer" : "TimeTimr — Clock";
+    document.title =
+      kind === "timer" ? "TimeTimr — Timer" : kind === "clock" ? "TimeTimr — Clock" : "TimeTimr — Timer & Clock";
     this.loop();
   }
 
@@ -87,7 +100,8 @@ export class PopoutApp {
   }
 
   private notifyClosed(): void {
-    this.bridge.send({ type: "popout-status", status: { [this.kind]: false } });
+    const status = this.kind === "combined" ? { timer: false, clock: false, combined: false } : { [this.kind]: false };
+    this.bridge.send({ type: "popout-status", status });
   }
 
   private loop = (): void => {
