@@ -13,6 +13,7 @@
     "dist:linux": "npm run prebuild:copy && electron-builder --linux",
     "dist:all": "npm run prebuild:copy && electron-builder -mwl"
   },
+  "author": "TimeTimr contributors",
   "devDependencies": {
     "electron": "^33.2.0",
     "electron-builder": "^25.1.8"
@@ -20,6 +21,8 @@
   "build": {
     "appId": "com.timetimr.app",
     "productName": "TimeTimr",
+    "electronVersion": "33.4.11",
+    "npmRebuild": false,
     "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "directories": {
       "output": "release",
