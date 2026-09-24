@@ -89,4 +89,4 @@ Countdown time itself is never "ticked" over the wire — each window derives th
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+CC0 1.0 — public domain dedication, see [LICENSE](LICENSE).
