@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.1.1 - 2026-09-24
+
+### Changed
+- The clock now matches the timer disk's size everywhere it's shown (main window, standalone pop-out, and combined pop-out).
+- The clock face now shows hour numerals (1-12).
+- Added a subtle "chapter ring" between the numerals and the hour ticks on the clock only — a quiet, color-independent way to tell the clock apart from the timer disk at a glance, without having to read the hands or count tick marks.
+
 ## v0.1.0 - 2026-09-24
 
 First release.

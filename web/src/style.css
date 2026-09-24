@@ -167,14 +167,31 @@ button {
 }
 
 .clock-face {
-  width: min(48vw, 220px);
-  height: min(48vw, 220px);
+  /* Same footprint as .timer-disk so the two widgets match in size. */
+  width: min(70vw, 320px);
+  height: min(70vw, 320px);
 }
 
 .clock-circle {
   fill: var(--disk-face, #fff);
   stroke: var(--disk-color, #e6432b);
   stroke-width: 2;
+}
+
+/* Subtle, color-independent cue that this is the clock and not the timer —
+   a thin chapter ring between the numerals and the hour ticks, the way a
+   traditional clock face is laid out. */
+.clock-chapter-ring {
+  stroke: var(--disk-text, #2b2b2b);
+  opacity: 0.18;
+  stroke-width: 1;
+}
+
+.clock-number {
+  fill: var(--disk-text, #2b2b2b);
+  font-size: 20px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .clock-tick {
@@ -367,14 +384,10 @@ body.is-popout {
   padding: 24px;
 }
 
-.popout-widget .timer-disk {
+.popout-widget .timer-disk,
+.popout-widget .clock-face {
   width: min(80vw, 420px);
   height: min(80vw, 420px);
-}
-
-.popout-widget .clock-face {
-  width: min(80vw, 320px);
-  height: min(80vw, 320px);
 }
 
 .popout-controls {
@@ -392,14 +405,10 @@ body.is-popout {
   gap: 36px;
 }
 
-.popout-layout[data-kind="combined"] .popout-widget .timer-disk {
-  width: min(38vw, 320px);
-  height: min(38vw, 320px);
-}
-
+.popout-layout[data-kind="combined"] .popout-widget .timer-disk,
 .popout-layout[data-kind="combined"] .popout-widget .clock-face {
-  width: min(28vw, 220px);
-  height: min(28vw, 220px);
+  width: min(36vw, 300px);
+  height: min(36vw, 300px);
 }
 
 @media (max-width: 640px) {

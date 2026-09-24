@@ -1,7 +1,7 @@
 {
   "name": "timetimr",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A customizable, Time Timer-inspired countdown timer. Runs as a website or a Windows/Mac/Linux desktop app.",
   "workspaces": [
     "web",
