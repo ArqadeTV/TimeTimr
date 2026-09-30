@@ -1,4 +1,5 @@
-import { Bridge } from "../core/bridge";
+import { Bridge, PopoutPosition } from "../core/bridge";
+import { boundsAreDockable } from "../core/dock";
 import { loadPersisted, savePersisted } from "../core/storage";
 import { playChime, playTick } from "../core/sound";
 import {
@@ -10,7 +11,7 @@ import {
   toggleStartPause,
   updateSettings,
 } from "../core/timer";
-import { DEFAULT_SETTINGS, PopoutStatus, TimerState, WidgetKind } from "../core/types";
+import { DEFAULT_SETTINGS, PopoutStatus, TimerState, WidgetBounds, WidgetKind } from "../core/types";
 import { TimerClock } from "./clock";
 import { TimerDisk } from "./disk";
 import { ControlPanel } from "./panel";
@@ -27,6 +28,9 @@ export class App {
   private lastAlarmSeqHandled = 0;
   private lastTickSecond = -1;
   private rafId = 0;
+  /** Web only: latest reported screen position of each standalone pop-out, used to
+   *  detect when the user drags the timer and clock pop-outs next to each other. */
+  private lastPopoutBounds: Partial<Record<"timer" | "clock", WidgetBounds>> = {};
 
   constructor(root: HTMLElement, bridge: Bridge) {
     this.bridge = bridge;
@@ -84,6 +88,8 @@ export class App {
         savePersisted(this.state.settings, this.state.durationMs);
         this.applySettingsUI();
         this.render();
+      } else if (msg.type === "popout-bounds") {
+        this.handlePopoutBounds(msg.kind, msg.bounds);
       }
     });
 
@@ -139,12 +145,28 @@ export class App {
   }
 
   /** Closes the separate timer + clock pop-outs and reopens them together in one window. */
-  private joinPopouts(): void {
+  private joinPopouts(atPosition?: PopoutPosition): void {
     this.bridge.send({ type: "close-popout", kind: "timer" });
     this.bridge.send({ type: "close-popout", kind: "clock" });
     this.poppedOut = { timer: true, clock: true, combined: true };
+    this.lastPopoutBounds = {};
     this.applyPoppedOutVisibility();
-    this.bridge.openPopout("combined");
+    this.bridge.openPopout("combined", atPosition);
+  }
+
+  /** Web only (Electron tracks this natively in main.cjs): watches for the timer and
+   *  clock pop-outs being dragged next to each other and auto-joins them when they are. */
+  private handlePopoutBounds(kind: WidgetKind, bounds: WidgetBounds): void {
+    if (kind !== "timer" && kind !== "clock") return;
+    this.lastPopoutBounds[kind] = bounds;
+    if (this.poppedOut.combined || !this.poppedOut.timer || !this.poppedOut.clock) return;
+
+    const timerBounds = this.lastPopoutBounds.timer;
+    const clockBounds = this.lastPopoutBounds.clock;
+    if (!timerBounds || !clockBounds) return;
+    if (!boundsAreDockable(timerBounds, clockBounds)) return;
+
+    this.joinPopouts({ x: Math.min(timerBounds.x, clockBounds.x), y: Math.min(timerBounds.y, clockBounds.y) });
   }
 
   private render(now: number = Date.now()): void {

@@ -1,6 +1,14 @@
 import { Bridge } from "../core/bridge";
 import { playChime, playTick } from "../core/sound";
-import { createInitialState, tick, toggleStartPause, reset as resetTimer } from "../core/timer";
+import {
+  createInitialState,
+  getRemainingMs,
+  msToParts,
+  reset as resetTimer,
+  setDurationParts,
+  tick,
+  toggleStartPause,
+} from "../core/timer";
 import { TimerState, WidgetKind } from "../core/types";
 import { TimerClock } from "./clock";
 import { TimerDisk } from "./disk";
@@ -14,7 +22,11 @@ export class PopoutApp {
   private lastAlarmSeqHandled = 0;
   private lastTickSecond = -1;
   private rafId = 0;
+  private boundsIntervalId = 0;
   private startPauseBtn!: HTMLButtonElement;
+  private hInput!: HTMLInputElement;
+  private mInput!: HTMLInputElement;
+  private sInput!: HTMLInputElement;
 
   constructor(root: HTMLElement, bridge: Bridge, kind: WidgetKind) {
     this.bridge = bridge;
@@ -43,11 +55,26 @@ export class PopoutApp {
     }
 
     controls.innerHTML = `
-      ${showsTimer ? '<button data-a="start-pause" type="button" class="btn-primary">Start</button>' : ""}
-      ${showsTimer ? '<button data-a="reset" type="button">Reset</button>' : ""}
-      <button data-a="pop-in" type="button" class="btn-subtle">Pop back in</button>
+      ${
+        showsTimer
+          ? `<div class="duration-row">
+               <label>Hr <input data-f="h" type="number" min="0" max="23" value="0" inputmode="numeric" /></label>
+               <label>Min <input data-f="m" type="number" min="0" max="59" value="0" inputmode="numeric" /></label>
+               <label>Sec <input data-f="s" type="number" min="0" max="59" value="0" inputmode="numeric" /></label>
+               <button data-a="apply-duration" type="button">Set</button>
+             </div>`
+          : ""
+      }
+      <div class="transport-row">
+        ${showsTimer ? '<button data-a="start-pause" type="button" class="btn-primary">Start</button>' : ""}
+        ${showsTimer ? '<button data-a="reset" type="button">Reset</button>' : ""}
+        <button data-a="pop-in" type="button" class="btn-subtle">Pop back in</button>
+      </div>
     `;
     if (showsTimer) {
+      this.hInput = controls.querySelector("[data-f=h]")!;
+      this.mInput = controls.querySelector("[data-f=m]")!;
+      this.sInput = controls.querySelector("[data-f=s]")!;
       this.startPauseBtn = controls.querySelector("[data-a=start-pause]")!;
       this.startPauseBtn.addEventListener("click", () => {
         if (!this.state) return;
@@ -56,6 +83,10 @@ export class PopoutApp {
       controls.querySelector("[data-a=reset]")!.addEventListener("click", () => {
         if (!this.state) return;
         this.broadcast(resetTimer(this.state));
+      });
+      controls.querySelector("[data-a=apply-duration]")!.addEventListener("click", () => {
+        if (!this.state) return;
+        this.broadcast(setDurationParts(this.state, this.numOf(this.hInput), this.numOf(this.mInput), this.numOf(this.sInput)));
       });
     }
 
@@ -76,6 +107,21 @@ export class PopoutApp {
     document.title =
       kind === "timer" ? "TimeTimr — Timer" : kind === "clock" ? "TimeTimr — Clock" : "TimeTimr — Timer & Clock";
     this.loop();
+
+    // Electron tracks real window 'move' events itself (see electron/main.cjs); on the
+    // web there's no cross-window API for that, so a standalone pop-out instead polls and
+    // reports its own screen position, letting the main window detect a drag-to-dock.
+    if (bridge.environment === "web" && kind !== "combined") {
+      this.boundsIntervalId = window.setInterval(() => this.reportBounds(), 200);
+    }
+  }
+
+  private reportBounds(): void {
+    this.bridge.send({
+      type: "popout-bounds",
+      kind: this.kind,
+      bounds: { x: window.screenX, y: window.screenY, width: window.outerWidth, height: window.outerHeight },
+    });
   }
 
   private applyState(state: TimerState): void {
@@ -85,8 +131,29 @@ export class PopoutApp {
     if (this.disk) this.disk.update(state);
     if (this.clock) this.clock.applySettings(state.settings);
     if (this.startPauseBtn) {
-      this.startPauseBtn.textContent = state.status === "running" ? "Pause" : "Start";
+      const running = state.status === "running";
+      this.startPauseBtn.textContent = running ? "Pause" : "Start";
+      this.hInput.disabled = running;
+      this.mInput.disabled = running;
+      this.sInput.disabled = running;
+      this.syncDurationInputs(getRemainingMs(state));
     }
+  }
+
+  private syncDurationInputs(ms: number): void {
+    const active = document.activeElement;
+    if (active === this.hInput || active === this.mInput || active === this.sInput) {
+      return; // don't fight the user while they're typing
+    }
+    const { h, m, s } = msToParts(ms);
+    this.hInput.value = String(h);
+    this.mInput.value = String(m);
+    this.sInput.value = String(s);
+  }
+
+  private numOf(input: HTMLInputElement): number {
+    const n = Number(input.value);
+    return Number.isFinite(n) && n >= 0 ? n : 0;
   }
 
   private broadcast(next: TimerState): void {
@@ -95,6 +162,7 @@ export class PopoutApp {
   }
 
   private popBackIn(): void {
+    clearInterval(this.boundsIntervalId);
     this.notifyClosed();
     this.bridge.closeSelf();
   }
@@ -111,6 +179,12 @@ export class PopoutApp {
       if (next !== this.state) {
         this.state = next;
         this.bridge.send({ type: "state", state: this.state });
+        if (this.startPauseBtn) {
+          this.startPauseBtn.textContent = "Start";
+          this.hInput.disabled = false;
+          this.mInput.disabled = false;
+          this.sInput.disabled = false;
+        }
       }
       if (this.state.alarmSeq !== this.lastAlarmSeqHandled) {
         this.lastAlarmSeqHandled = this.state.alarmSeq;
@@ -131,6 +205,7 @@ export class PopoutApp {
 
   destroy(): void {
     cancelAnimationFrame(this.rafId);
+    clearInterval(this.boundsIntervalId);
   }
 }
 

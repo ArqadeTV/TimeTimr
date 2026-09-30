@@ -43,12 +43,23 @@ export interface PopoutStatus {
   combined: boolean;
 }
 
+/** Screen-space position/size of a pop-out window, used for drag-to-dock detection. */
+export interface WidgetBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export type BridgeMessage =
   | { type: "state"; state: TimerState }
   | { type: "request-state" }
   | { type: "popout-status"; status: Partial<PopoutStatus> }
   /** Asks the pop-out window of this kind to close itself (used when joining separate pop-outs into one). */
-  | { type: "close-popout"; kind: WidgetKind };
+  | { type: "close-popout"; kind: WidgetKind }
+  /** Web only: a standalone pop-out reporting its own screen position, polled periodically so the
+   *  main window can detect when two separate pop-outs are dragged next to each other. */
+  | { type: "popout-bounds"; kind: WidgetKind; bounds: WidgetBounds };
 
 export const DEFAULT_SETTINGS: TimerSettings = {
   diskColor: "#e6432b",

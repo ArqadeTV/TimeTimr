@@ -1,4 +1,4 @@
-import { Bridge } from "./bridge";
+import { Bridge, PopoutPosition } from "./bridge";
 import { BridgeMessage, WidgetKind } from "./types";
 
 const CHANNEL_NAME = "timetimr-channel";
@@ -26,7 +26,7 @@ export class WebBridge implements Bridge {
     return () => this.channel.removeEventListener("message", listener);
   }
 
-  openPopout(kind: WidgetKind): void {
+  openPopout(kind: WidgetKind, atPosition?: PopoutPosition): void {
     const url = `${popoutBaseUrl()}?widget=${kind}`;
     const size = kind === "combined" ? "width=760,height=480" : "width=420,height=480";
     // A minimal feature set (no toolbar/location/menubar/status) is what gets browsers
@@ -34,6 +34,7 @@ export class WebBridge implements Bridge {
     const features = [
       "popup=yes",
       size,
+      atPosition ? `left=${Math.round(atPosition.x)},top=${Math.round(atPosition.y)}` : "",
       "noopener",
       "noreferrer",
       "toolbar=no",
@@ -42,7 +43,9 @@ export class WebBridge implements Bridge {
       "status=no",
       "scrollbars=no",
       "resizable=yes",
-    ].join(",");
+    ]
+      .filter(Boolean)
+      .join(",");
     window.open(url, `timetimr-${kind}`, features);
   }
 

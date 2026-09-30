@@ -9,8 +9,8 @@ contextBridge.exposeInMainWorld("timetimrElectron", {
     ipcRenderer.on("ttr:message", listener);
     return () => ipcRenderer.removeListener("ttr:message", listener);
   },
-  openPopout(kind) {
-    ipcRenderer.send("ttr:open-popout", kind);
+  openPopout(kind, atPosition) {
+    ipcRenderer.send("ttr:open-popout", kind, atPosition);
   },
   closeSelf() {
     ipcRenderer.send("ttr:close-self");

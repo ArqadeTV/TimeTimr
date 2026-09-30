@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.1.2 - 2026-09-30
+
+### Added
+- Drag one pop-out window onto another (the standalone timer and clock windows) and they now auto-dock into a single combined window, right where you dropped them. On desktop this is a real native window-drag; on the web, where browsers don't expose one window's position to another, pop-outs periodically report their own position so the main window can detect the same thing. The "Join into one window" button still works too — this is purely additive.
+- The standalone timer pop-out (and the combined pop-out) now has the same hour/min/sec duration inputs as the main window — previously they only had Start/Pause/Reset, with no way to set an exact custom duration.
+
+### Fixed
+- Manual duration editing from a pop-out window didn't actually apply (reported as "can't change the time in the popped-out clock" / "manual time-editing doesn't work") — the inputs simply didn't exist yet; see Added above.
+
 ## v0.1.1 - 2026-09-24
 
 ### Changed

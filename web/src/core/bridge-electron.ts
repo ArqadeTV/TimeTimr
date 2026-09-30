@@ -1,4 +1,4 @@
-import { Bridge } from "./bridge";
+import { Bridge, PopoutPosition } from "./bridge";
 import { BridgeMessage, WidgetKind } from "./types";
 
 /**
@@ -24,8 +24,8 @@ export class ElectronBridge implements Bridge {
     return this.api.onMessage(handler);
   }
 
-  openPopout(kind: WidgetKind): void {
-    this.api.openPopout(kind);
+  openPopout(kind: WidgetKind, atPosition?: PopoutPosition): void {
+    this.api.openPopout(kind, atPosition);
   }
 
   closeSelf(): void {
