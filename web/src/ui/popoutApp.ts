@@ -1,4 +1,5 @@
 import { Bridge } from "../core/bridge";
+import { MOVE_BEFORE_DOCK_TRACKING_PX } from "../core/dock";
 import { playChime, playTick } from "../core/sound";
 import {
   createInitialState,
@@ -23,6 +24,7 @@ export class PopoutApp {
   private lastTickSecond = -1;
   private rafId = 0;
   private boundsIntervalId = 0;
+  private spawnBounds: { x: number; y: number } | null = null;
   private startPauseBtn!: HTMLButtonElement;
   private hInput!: HTMLInputElement;
   private mInput!: HTMLInputElement;
@@ -109,19 +111,24 @@ export class PopoutApp {
     this.loop();
 
     // Electron tracks real window 'move' events itself (see electron/main.cjs); on the
-    // web there's no cross-window API for that, so a standalone pop-out instead polls and
-    // reports its own screen position, letting the main window detect a drag-to-dock.
-    if (bridge.environment === "web" && kind !== "combined") {
+    // web there's no cross-window API for that, so a pop-out instead polls and reports
+    // its own screen position, letting the main window detect a drag-to-dock.
+    if (bridge.environment === "web") {
       this.boundsIntervalId = window.setInterval(() => this.reportBounds(), 200);
     }
   }
 
   private reportBounds(): void {
-    this.bridge.send({
-      type: "popout-bounds",
-      kind: this.kind,
-      bounds: { x: window.screenX, y: window.screenY, width: window.outerWidth, height: window.outerHeight },
-    });
+    const bounds = { x: window.screenX, y: window.screenY, width: window.outerWidth, height: window.outerHeight };
+    if (!this.spawnBounds) {
+      this.spawnBounds = { x: bounds.x, y: bounds.y };
+      return; // don't report the window's default open position — only real drags
+    }
+    const moved =
+      Math.abs(bounds.x - this.spawnBounds.x) > MOVE_BEFORE_DOCK_TRACKING_PX ||
+      Math.abs(bounds.y - this.spawnBounds.y) > MOVE_BEFORE_DOCK_TRACKING_PX;
+    if (!moved) return;
+    this.bridge.send({ type: "popout-bounds", kind: this.kind, bounds });
   }
 
   private applyState(state: TimerState): void {

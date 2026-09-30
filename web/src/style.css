@@ -90,6 +90,29 @@ button {
   justify-content: center;
 }
 
+.empty-hint {
+  display: none;
+  margin: 0;
+  max-width: 220px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Both widgets are popped out (or hidden) — give the empty space a square shape of
+   its own instead of leaving a thin sliver shaped only by the padding. */
+.widgets.is-empty {
+  width: min(70vw, 320px);
+  aspect-ratio: 1 / 1;
+  margin: 0 auto;
+  justify-content: center;
+}
+
+.widgets.is-empty .empty-hint {
+  display: block;
+}
+
 @media (max-width: 860px) {
   .layout {
     grid-template-columns: 1fr;

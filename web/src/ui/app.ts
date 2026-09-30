@@ -24,6 +24,7 @@ export class App {
   private panel: ControlPanel;
   private clockSlot: HTMLDivElement;
   private diskSlot: HTMLDivElement;
+  private widgets: HTMLDivElement;
   private poppedOut: PopoutStatus = { timer: false, clock: false, combined: false };
   private lastAlarmSeqHandled = 0;
   private lastTickSecond = -1;
@@ -43,6 +44,7 @@ export class App {
         <div class="widgets" data-widgets>
           <div class="disk-slot" data-disk-slot></div>
           <div class="clock-slot" data-clock-slot></div>
+          <p class="empty-hint" data-empty-hint>Drag a pop-out window here to bring it back, or use the panel.</p>
         </div>
         <div class="panel-slot" data-panel-slot></div>
       </div>
@@ -50,6 +52,7 @@ export class App {
 
     this.diskSlot = root.querySelector("[data-disk-slot]")!;
     this.clockSlot = root.querySelector("[data-clock-slot]")!;
+    this.widgets = root.querySelector("[data-widgets]")!;
     const panelSlot = root.querySelector<HTMLDivElement>("[data-panel-slot]")!;
     const layout = root.querySelector<HTMLDivElement>("[data-layout]")!;
     if (bridge.environment === "electron") {
@@ -87,15 +90,30 @@ export class App {
         this.state = msg.state;
         savePersisted(this.state.settings, this.state.durationMs);
         this.applySettingsUI();
+        this.applyPoppedOutVisibility();
         this.render();
       } else if (msg.type === "popout-bounds") {
         this.handlePopoutBounds(msg.kind, msg.bounds);
       }
     });
 
+    // Closing the main window while pop-outs are open orphans them. Electron blocks the
+    // close outright (see electron/main.cjs); browsers only allow a generic confirmation
+    // prompt on tab/window close, which is the most this can do on the web.
+    window.addEventListener("beforeunload", (event) => {
+      if (!this.anyPopoutOpen()) return;
+      event.preventDefault();
+      event.returnValue = "";
+    });
+
     this.applySettingsUI();
+    this.applyPoppedOutVisibility();
     this.render();
     this.loop();
+  }
+
+  private anyPopoutOpen(): boolean {
+    return this.poppedOut.timer || this.poppedOut.clock || this.poppedOut.combined;
   }
 
   private setDurationMs(ms: number): void {
@@ -112,13 +130,13 @@ export class App {
     this.bridge.send({ type: "state", state: this.state });
     if (aotChanged) this.bridge.setAlwaysOnTop?.(next.settings.alwaysOnTopPopouts);
     this.applySettingsUI();
+    this.applyPoppedOutVisibility();
     this.render();
   }
 
   private applySettingsUI(): void {
     this.panel.applySettingsToForm(this.state.settings);
     this.panel.setRunning(this.state.status === "running");
-    this.clockSlot.style.display = this.state.settings.showClock ? "" : "none";
     this.clockSlot.parentElement?.setAttribute("data-clock-position", this.state.settings.clockPosition);
     this.clock.applySettings(this.state.settings);
     if (this.state.settings.showClock && !this.clock.el.parentElement) {
@@ -129,9 +147,15 @@ export class App {
   private applyPoppedOutVisibility(): void {
     const timerHidden = this.poppedOut.timer || this.poppedOut.combined;
     const clockHidden = this.poppedOut.clock || this.poppedOut.combined;
+    const clockShowable = this.state.settings.showClock && !clockHidden;
     this.diskSlot.style.display = timerHidden ? "none" : "";
-    this.clockSlot.style.display = !clockHidden && this.state.settings.showClock ? "" : "none";
+    this.clockSlot.style.display = clockShowable ? "" : "none";
     this.panel.setPoppedOut(this.poppedOut);
+
+    // Nothing left to show in the widgets panel — give the empty space a square shape
+    // (instead of the sliver that padding alone produces) with a hint on how to get a
+    // widget back, rather than leaving an oddly-thin empty box.
+    this.widgets.classList.toggle("is-empty", timerHidden && !clockShowable);
   }
 
   private openPopout(kind: WidgetKind): void {
@@ -154,9 +178,17 @@ export class App {
     this.bridge.openPopout("combined", atPosition);
   }
 
-  /** Web only (Electron tracks this natively in main.cjs): watches for the timer and
-   *  clock pop-outs being dragged next to each other and auto-joins them when they are. */
+  /** Web only (Electron tracks both of these natively in main.cjs). Any pop-out dragged
+   *  onto the main window pops back in; otherwise, the timer and clock pop-outs dragged
+   *  next to each other auto-join into one combined window. */
   private handlePopoutBounds(kind: WidgetKind, bounds: WidgetBounds): void {
+    const mainBounds = this.ownWindowBounds();
+    if (mainBounds && boundsAreDockable(mainBounds, bounds)) {
+      this.bridge.send({ type: "close-popout", kind });
+      if (kind === "timer" || kind === "clock") delete this.lastPopoutBounds[kind];
+      return;
+    }
+
     if (kind !== "timer" && kind !== "clock") return;
     this.lastPopoutBounds[kind] = bounds;
     if (this.poppedOut.combined || !this.poppedOut.timer || !this.poppedOut.clock) return;
@@ -167,6 +199,11 @@ export class App {
     if (!boundsAreDockable(timerBounds, clockBounds)) return;
 
     this.joinPopouts({ x: Math.min(timerBounds.x, clockBounds.x), y: Math.min(timerBounds.y, clockBounds.y) });
+  }
+
+  private ownWindowBounds(): WidgetBounds | null {
+    if (typeof window === "undefined") return null;
+    return { x: window.screenX, y: window.screenY, width: window.outerWidth, height: window.outerHeight };
   }
 
   private render(now: number = Date.now()): void {

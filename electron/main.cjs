@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog } = require("electron");
 const path = require("node:path");
 
 const DEV_SERVER_URL = process.env.TIMETIMR_DEV_SERVER_URL || "http://localhost:5173";
@@ -61,6 +61,19 @@ function createMainWindow() {
   mainWindow.on("closed", () => {
     mainWindow = null;
   });
+  // Closing the main window while pop-outs are still open orphans them (nothing is left
+  // driving shared state), so block it and point the user at the pop-outs instead.
+  mainWindow.on("close", (event) => {
+    if (popouts.size === 0) return;
+    event.preventDefault();
+    dialog.showMessageBox(mainWindow, {
+      type: "info",
+      message: "Pop-out windows are still open",
+      detail: "Pop them back in (or close them) before closing the main TimeTimr window.",
+      buttons: ["OK"],
+    });
+  });
+  mainWindow.on("move", () => checkDocking());
   if (isDev) mainWindow.webContents.openDevTools({ mode: "detach" });
 }
 
@@ -95,17 +108,36 @@ function createPopoutWindow(kind, atPosition) {
     popouts.delete(kind);
   });
   popouts.set(kind, win);
+  win.on("move", () => checkDocking());
+}
 
-  // Only the standalone timer/clock pop-outs can be dragged together to dock;
-  // the combined window has nothing left to merge with.
-  if (kind === "timer" || kind === "clock") {
-    win.on("move", () => maybeAutoDock());
+/** Runs on every main-window or pop-out move: first checks whether any pop-out has
+ *  been dragged back onto the main window (highest priority), then whether the
+ *  standalone timer and clock pop-outs have been dragged next to each other. */
+function checkDocking() {
+  if (returnAnyPopoutDraggedOntoMain()) return;
+  maybeAutoDockSiblings();
+}
+
+/** Closes (normally — this triggers its own "I closed" broadcast, which is exactly
+ *  what's needed here, no special-casing required) any pop-out dragged onto the main
+ *  window, restoring that widget to the main window. Returns true if one was closed. */
+function returnAnyPopoutDraggedOntoMain() {
+  if (!mainWindow || mainWindow.isDestroyed()) return false;
+  const mainBounds = mainWindow.getBounds();
+  for (const [, win] of popouts) {
+    if (win.isDestroyed()) continue;
+    if (rectsAreDockable(mainBounds, win.getBounds(), DOCK_MARGIN_PX)) {
+      win.close();
+      return true;
+    }
   }
+  return false;
 }
 
 /** Checks whether the standalone timer and clock pop-outs have been dragged next to
  *  each other and, if so, merges them into one combined window in their place. */
-function maybeAutoDock() {
+function maybeAutoDockSiblings() {
   const timerWin = popouts.get("timer");
   const clockWin = popouts.get("clock");
   if (!timerWin || timerWin.isDestroyed() || !clockWin || clockWin.isDestroyed()) return;

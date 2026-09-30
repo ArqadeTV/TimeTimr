@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.1.3 - 2026-09-30
+
+### Added
+- Drag a pop-out window onto the main window and it pops back in, restoring that widget there — the reverse of dragging pop-outs together. Works the same way as the existing dock-together gesture (native window tracking on desktop, position polling on the web).
+- The main window's widgets panel now becomes a proper square (with a hint on how to bring a widget back) when both the timer and clock are popped out, instead of collapsing into a thin strip shaped only by its padding.
+
+### Changed
+- The main window can no longer be closed while any pop-out is still open — closing it first would leave the pop-out(s) running with nothing driving the shared timer state. On desktop this is enforced outright with an explanation; browsers only allow a generic "are you sure" prompt on tab close, which is the closest the web version can get.
+
+### Fixed
+- Changing an unrelated setting (color, sound, etc.) while the clock was popped out could make it reappear in the main window even though it was still open elsewhere.
+
 ## v0.1.2 - 2026-09-30
 
 ### Added
