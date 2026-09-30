@@ -1,5 +1,6 @@
 import { Bridge, PopoutPosition } from "../core/bridge";
 import { boundsAreDockable } from "../core/dock";
+import { isPipSupported, openPipWindow } from "../core/pip";
 import { loadPersisted, savePersisted } from "../core/storage";
 import { playChime, playTick } from "../core/sound";
 import {
@@ -15,6 +16,13 @@ import { DEFAULT_SETTINGS, PopoutStatus, TimerState, WidgetBounds, WidgetKind } 
 import { TimerClock } from "./clock";
 import { TimerDisk } from "./disk";
 import { ControlPanel } from "./panel";
+import { PopoutApp } from "./popoutApp";
+
+const PIP_SIZE: Record<WidgetKind, { width: number; height: number }> = {
+  timer: { width: 320, height: 380 },
+  clock: { width: 320, height: 380 },
+  combined: { width: 620, height: 340 },
+};
 
 export class App {
   private bridge: Bridge;
@@ -32,6 +40,9 @@ export class App {
   /** Web only: latest reported screen position of each standalone pop-out, used to
    *  detect when the user drags the timer and clock pop-outs next to each other. */
   private lastPopoutBounds: Partial<Record<"timer" | "clock", WidgetBounds>> = {};
+  /** Web only: the single Picture-in-Picture pop-out, if one is open. Chromium only
+   *  supports one PiP window per page, so opening another replaces it. */
+  private activePip: { app: PopoutApp; window: Window } | null = null;
 
   constructor(root: HTMLElement, bridge: Bridge) {
     this.bridge = bridge;
@@ -40,6 +51,9 @@ export class App {
     this.lastAlarmSeqHandled = this.state.alarmSeq;
 
     root.innerHTML = `
+      <header class="app-header">
+        <span class="wordmark">Time<em>Timr</em></span>
+      </header>
       <div class="layout" data-layout>
         <div class="widgets" data-widgets>
           <div class="disk-slot" data-disk-slot></div>
@@ -165,7 +179,51 @@ export class App {
       this.poppedOut = { ...this.poppedOut, [kind]: true };
     }
     this.applyPoppedOutVisibility();
-    this.bridge.openPopout(kind);
+
+    // "Always on top" on the web means a real Picture-in-Picture window (the same
+    // mechanism behind e.g. Google Meet's floating call window) — a genuinely
+    // chrome-less, always-on-top window, which a regular popup can't be. Electron's
+    // "always on top" instead sets the native window flag (see main.cjs); nothing
+    // extra to do here for that case.
+    if (this.bridge.environment === "web" && this.state.settings.alwaysOnTopPopouts && isPipSupported()) {
+      void this.openPopoutInPip(kind);
+    } else {
+      this.bridge.openPopout(kind);
+    }
+  }
+
+  private async openPopoutInPip(kind: WidgetKind): Promise<void> {
+    try {
+      // Chromium allows only one Picture-in-Picture window per page — opening another
+      // replaces it, so clean up whatever was there first.
+      if (this.activePip) {
+        const previous = this.activePip;
+        this.activePip = null;
+        previous.app.notifyClosedExternally();
+        previous.window.close();
+      }
+
+      const { width, height } = PIP_SIZE[kind];
+      const pipWindow = await openPipWindow(width, height);
+      pipWindow.document.body.className = "is-popout";
+      const popoutApp = new PopoutApp(pipWindow.document.body, this.bridge, kind, {
+        hostWindow: pipWindow,
+        onCloseRequested: () => pipWindow.close(),
+        trackBounds: false, // a PiP window doesn't participate in drag-to-dock
+      });
+      this.activePip = { app: popoutApp, window: pipWindow };
+      pipWindow.addEventListener(
+        "pagehide",
+        () => {
+          if (this.activePip?.window === pipWindow) this.activePip = null;
+          popoutApp.notifyClosedExternally();
+        },
+        { once: true }
+      );
+    } catch (err) {
+      console.error("Picture-in-Picture pop-out failed, opening a regular window instead", err);
+      this.bridge.openPopout(kind);
+    }
   }
 
   /** Closes the separate timer + clock pop-outs and reopens them together in one window. */

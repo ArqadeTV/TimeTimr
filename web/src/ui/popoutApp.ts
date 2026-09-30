@@ -14,9 +14,25 @@ import { TimerState, WidgetKind } from "../core/types";
 import { TimerClock } from "./clock";
 import { TimerDisk } from "./disk";
 
+export interface PopoutAppOptions {
+  /** The real window this content lives in. Defaults to `window` — pass the Picture-in-Picture
+   *  window here when hosting the widget inside one, since this runs in the opener's JS realm
+   *  and `window` itself never changes. Used for title/focus-state and drag-dock bounds. */
+  hostWindow?: Window;
+  /** Called instead of `bridge.closeSelf()` when the user clicks "Pop back in". Needed for a
+   *  PiP-hosted widget, where closing means `hostWindow.close()`, not the main tab. */
+  onCloseRequested?: () => void;
+  /** Whether to poll and report this window's position for drag-to-dock detection. Off by
+   *  default for a PiP window — it isn't meant to dock with anything else. */
+  trackBounds?: boolean;
+}
+
 export class PopoutApp {
   private bridge: Bridge;
   private kind: WidgetKind;
+  private hostWindow: Window;
+  private onCloseRequested?: () => void;
+  private trackBounds: boolean;
   private state: TimerState | null = null;
   private disk: TimerDisk | null = null;
   private clock: TimerClock | null = null;
@@ -30,9 +46,12 @@ export class PopoutApp {
   private mInput!: HTMLInputElement;
   private sInput!: HTMLInputElement;
 
-  constructor(root: HTMLElement, bridge: Bridge, kind: WidgetKind) {
+  constructor(root: HTMLElement, bridge: Bridge, kind: WidgetKind, options: PopoutAppOptions = {}) {
     this.bridge = bridge;
     this.kind = kind;
+    this.hostWindow = options.hostWindow ?? window;
+    this.onCloseRequested = options.onCloseRequested;
+    this.trackBounds = options.trackBounds ?? true;
 
     root.innerHTML = `
       <div class="popout-layout" data-kind="${kind}">
@@ -93,6 +112,7 @@ export class PopoutApp {
     }
 
     controls.querySelector("[data-a=pop-in]")!.addEventListener("click", () => this.popBackIn());
+    // The whole tab/app closing always matters, regardless of what's hosting this widget.
     window.addEventListener("beforeunload", () => this.notifyClosed());
 
     this.bridge.onMessage((msg) => {
@@ -106,20 +126,21 @@ export class PopoutApp {
     });
     this.bridge.send({ type: "request-state" });
 
-    document.title =
+    root.ownerDocument.title =
       kind === "timer" ? "TimeTimr — Timer" : kind === "clock" ? "TimeTimr — Clock" : "TimeTimr — Timer & Clock";
     this.loop();
 
     // Electron tracks real window 'move' events itself (see electron/main.cjs); on the
     // web there's no cross-window API for that, so a pop-out instead polls and reports
     // its own screen position, letting the main window detect a drag-to-dock.
-    if (bridge.environment === "web") {
+    if (bridge.environment === "web" && this.trackBounds) {
       this.boundsIntervalId = window.setInterval(() => this.reportBounds(), 200);
     }
   }
 
   private reportBounds(): void {
-    const bounds = { x: window.screenX, y: window.screenY, width: window.outerWidth, height: window.outerHeight };
+    const w = this.hostWindow;
+    const bounds = { x: w.screenX, y: w.screenY, width: w.outerWidth, height: w.outerHeight };
     if (!this.spawnBounds) {
       this.spawnBounds = { x: bounds.x, y: bounds.y };
       return; // don't report the window's default open position — only real drags
@@ -148,7 +169,7 @@ export class PopoutApp {
   }
 
   private syncDurationInputs(ms: number): void {
-    const active = document.activeElement;
+    const active = this.hInput.ownerDocument.activeElement;
     if (active === this.hInput || active === this.mInput || active === this.sInput) {
       return; // don't fight the user while they're typing
     }
@@ -171,7 +192,17 @@ export class PopoutApp {
   private popBackIn(): void {
     clearInterval(this.boundsIntervalId);
     this.notifyClosed();
-    this.bridge.closeSelf();
+    if (this.onCloseRequested) this.onCloseRequested();
+    else this.bridge.closeSelf();
+  }
+
+  /** Call when the host window closed on its own (e.g. the user used a Picture-in-Picture
+   *  window's native close control, which this code has no "click" event for) — reports
+   *  the widget as closed and stops, without trying to close anything itself. */
+  notifyClosedExternally(): void {
+    clearInterval(this.boundsIntervalId);
+    this.notifyClosed();
+    this.destroy();
   }
 
   private notifyClosed(): void {

@@ -173,9 +173,10 @@ export class ControlPanel {
         <label>Volume <input data-f="volume" type="range" min="0" max="1" step="0.05" /></label>
       </section>
 
-      <section class="panel-section electron-only" data-electron-only>
-        <h2>Desktop</h2>
-        <label class="checkbox"><input data-f="alwaysOnTopPopouts" type="checkbox" /> Pop-outs stay always on top</label>
+      <section class="panel-section">
+        <h2>Always on top</h2>
+        <label class="checkbox"><input data-f="alwaysOnTopPopouts" type="checkbox" /> Pop-outs stay on top of other windows</label>
+        <p class="hint">On the desktop app, every pop-out gets this. In a browser it needs Picture-in-Picture support (Chrome/Edge) — pop-outs open as a small floating always-on-top window with no address bar, like a video's PiP. Unsupported browsers fall back to a normal pop-out window.</p>
       </section>
 
       <section class="panel-section">

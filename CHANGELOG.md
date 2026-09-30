@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.1.4 - 2026-09-30
+
+### Added
+- A real "Always on top" option for the browser version. When on (and your browser supports it — Chrome/Edge via the Document Picture-in-Picture API), pop-outs open as a genuinely chrome-less floating window with no address bar, tab strip, or extensions icon — the same mechanism behind things like Google Meet's floating call window — instead of a regular pop-up window. Falls back to a normal pop-out automatically where it isn't supported. Note: browsers currently allow only one such window at a time, so opening a second replaces the first; it also doesn't participate in the drag-to-dock/return-to-main gestures.
+
+### Changed
+- Visual refresh: a wordmark, a serif accent for headings and section titles, and a settings panel that reads as one connected panel with dividers instead of a stack of separate boxed cards.
+
 ## v0.1.3 - 2026-09-30
 
 ### Added

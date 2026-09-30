@@ -1,21 +1,22 @@
 :root {
   color-scheme: light dark;
-  --bg: #f4f2ee;
+  --bg: #faf6ef;
   --surface: #ffffff;
-  --border: #e2ddd4;
-  --text: #26241f;
-  --text-muted: #7a7469;
-  --accent: #e6432b;
+  --border: #e5ddcc;
+  --text: #241f16;
+  --text-muted: #837a68;
+  --accent: #cf3418;
+  --serif: Georgia, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", serif;
   font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #1b1a17;
-    --surface: #262420;
-    --border: #3a372f;
-    --text: #f2efe9;
-    --text-muted: #a39c8c;
+    --bg: #15120d;
+    --surface: #211d15;
+    --border: #3a3325;
+    --text: #f3ece0;
+    --text-muted: #9c917a;
   }
 }
 
@@ -41,6 +42,26 @@ button {
   color: inherit;
 }
 
+/* ---------- header ---------- */
+
+.app-header {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 28px 20px 0;
+}
+
+.wordmark {
+  font-family: var(--serif);
+  font-size: 22px;
+  letter-spacing: 0.01em;
+  color: var(--text);
+}
+
+.wordmark em {
+  font-style: normal;
+  color: var(--accent);
+}
+
 /* ---------- main layout ---------- */
 
 .layout {
@@ -50,11 +71,11 @@ button {
   gap: 24px;
   max-width: 1100px;
   margin: 0 auto;
-  padding: 32px 20px 60px;
+  padding: 20px 20px 60px;
 }
 
 .layout.is-electron {
-  padding-top: 44px; /* leave room for native title bar area */
+  padding-top: 30px; /* leave room for native title bar area */
 }
 
 .widgets {
@@ -63,8 +84,8 @@ button {
   align-items: center;
   gap: 28px;
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 20px;
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 12px 32px -18px rgba(0, 0, 0, 0.35);
   padding: 32px;
 }
 
@@ -250,22 +271,27 @@ button {
 .panel {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  background: var(--surface);
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 12px 32px -18px rgba(0, 0, 0, 0.35);
 }
 
 .panel-section {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 18px 20px;
+  padding: 20px 22px;
+  border-bottom: 1px solid var(--border);
+}
+
+.panel-section:last-child {
+  border-bottom: none;
 }
 
 .panel-section h2 {
-  margin: 0 0 12px;
-  font-size: 14px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-muted);
+  margin: 0 0 14px;
+  font-family: var(--serif);
+  font-size: 16px;
+  font-weight: normal;
+  font-style: italic;
+  color: var(--text);
 }
 
 .duration-row {
